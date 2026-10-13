@@ -85,6 +85,7 @@ function AbsensiOtomatis($sql)
             WHEN tbl_absensi.status IS NULL THEN 'Belum Absensi'
             WHEN tbl_absensi.status = 1 THEN 'Hadir'
             WHEN tbl_absensi.status = 2 THEN 'Izin'
+            WHEN tbl_absensi.status = 4 THEN 'Sakit'
         ELSE 'Tidak Hadir' END) AS status, 
         (CASE
             WHEN tbl_absensi.waktu IS NULL THEN 'Belum'
@@ -117,6 +118,7 @@ function PencarianAbsensi($nama, $tanggal_awal, $tanggal_akhir)
             WHEN 1 THEN 'Hadir'
             WHEN 2 THEN 'Izin'
             WHEN 3 THEN 'Tidak Hadir'
+            WHEN 4 THEN 'Sakit'
             ELSE 'Belum Absensi'
         END AS status,
         DATE_FORMAT(a.tanggal, '%W') AS hari,
@@ -245,7 +247,7 @@ function DataKegiatan($sql)
 {
     include 'database.php';
     $sql = "SELECT tbl_siswa.id_siswa, tbl_siswa.nama, 
-    tbl_siswa.perusahaan, tbl_kegiatan.id_kegiatan, 
+    tbl_siswa.perusahaan, tbl_kegiatan.tempat, tbl_kegiatan.id_kegiatan,
     tbl_kegiatan.kegiatan, tbl_kegiatan.tanggal,
     DATE_FORMAT(tbl_kegiatan.tanggal, '%W') AS hari, 
     CONCAT(SUBSTRING(tbl_kegiatan.waktu_awal, 1, 5), ' - ', SUBSTRING(tbl_kegiatan.waktu_akhir, 1, 5)) AS waktu
@@ -261,7 +263,7 @@ function CariKegiatan($nama, $tanggal_awal, $tanggal_akhir)
 {
     include 'database.php';
     $sql = "SELECT tbl_siswa.id_siswa, tbl_siswa.nama, 
-    tbl_siswa.perusahaan, tbl_kegiatan.id_kegiatan, 
+    tbl_siswa.perusahaan, tbl_kegiatan.tempat, tbl_kegiatan.id_kegiatan,
     tbl_kegiatan.kegiatan, tbl_kegiatan.tanggal,
     DATE_FORMAT(tbl_kegiatan.tanggal, '%W') AS hari, 
     CONCAT(SUBSTRING(tbl_kegiatan.waktu_awal, 1, 5), ' - ', SUBSTRING(tbl_kegiatan.waktu_akhir, 1, 5)) AS waktu
@@ -283,7 +285,8 @@ function MenampilkanKegiatan($id_siswa)
     DAYNAME(tbl_kegiatan.tanggal) AS hari, 
     GROUP_CONCAT(CONCAT(tbl_kegiatan.kegiatan, 
     ' (', tbl_kegiatan.waktu_awal, ' - ', tbl_kegiatan.waktu_akhir, ')') 
-    SEPARATOR ', ') AS kegiatan 
+    SEPARATOR ', ') AS kegiatan,
+    GROUP_CONCAT(DISTINCT tbl_kegiatan.tempat ORDER BY tbl_kegiatan.tempat SEPARATOR ', ') AS tempat
     FROM tbl_kegiatan WHERE tbl_kegiatan.id_siswa = '$id_siswa' 
     GROUP BY tbl_kegiatan.tanggal, tbl_kegiatan.id_siswa 
     ORDER BY tbl_kegiatan.tanggal DESC";
@@ -300,7 +303,8 @@ function MencarikanKegiatan($id_siswa, $tanggal_awal, $tanggal_akhir)
     DAYNAME(tbl_kegiatan.tanggal) AS hari, 
     GROUP_CONCAT(CONCAT(tbl_kegiatan.kegiatan, 
     ' (', tbl_kegiatan.waktu_awal, ' - ', tbl_kegiatan.waktu_akhir, ')') 
-    SEPARATOR ', ') AS kegiatan 
+    SEPARATOR ', ') AS kegiatan,
+    GROUP_CONCAT(DISTINCT tbl_kegiatan.tempat ORDER BY tbl_kegiatan.tempat SEPARATOR ', ') AS tempat
     FROM tbl_kegiatan WHERE tbl_kegiatan.id_siswa = '$id_siswa'
     AND tbl_kegiatan.tanggal BETWEEN '$tanggal_awal' AND '$tanggal_akhir' 
     GROUP BY tbl_kegiatan.tanggal, tbl_kegiatan.id_siswa 
@@ -458,6 +462,9 @@ function StatusAbsensi($status)
             break;
         case 3:
             $status = "Tidak Hadir";
+            break;
+        case 4:
+            $status = "Sakit";
             break;
     }
     return $status;

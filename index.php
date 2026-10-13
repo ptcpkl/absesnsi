@@ -72,14 +72,6 @@ $allowed_pages = [
     'meeting'       => "apps/meeting.php"
 ];
 
-// ========================= Guard for siswa location permission =========================
-if (strtolower($_SESSION['level']) === 'siswa' && !in_array($current, ['verify_lokasi', 'lokasi_denied'])) {
-    if (empty($_SESSION['location_allowed'])) {
-        header("Location: index.php?page=verify_lokasi");
-        exit;
-    }
-}
-
 // ========================= Helper for active state =========================
 function is_active($key, $current)
 {

@@ -36,13 +36,22 @@ if (isset($_POST['tambah_siswa'])) {
         $nama        = input($_POST["nama"]);
         $perusahaan  = input($_POST["perusahaan"]);
         $jurusan     = input($_POST["jurusan"]);
+        $pembimbing  = mysqli_real_escape_string($kon, trim($_POST["pembimbing"] ?? ''));
         $nis         = input($_POST["nis"]);
         $mulai_pkl   = input($_POST["mulai_pkl"]);
         $akhir_pkl   = input($_POST["akhir_pkl"]);
         $jam_masuk   = input($_POST["jam_masuk"]);
+        $pkl_latitude = filter_var($_POST['pkl_latitude'] ?? null, FILTER_VALIDATE_FLOAT);
+        $pkl_longitude = filter_var($_POST['pkl_longitude'] ?? null, FILTER_VALIDATE_FLOAT);
+        $pkl_radius_meter = filter_var($_POST['pkl_radius_meter'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 25, 'max_range' => 5000]]);
         $no_telp     = input($_POST["no_telp"]);
         $alamat      = input($_POST["alamat"]);
         $email       = input($_POST["email"]);
+
+        if ($pkl_latitude === false || $pkl_longitude === false || $pkl_radius_meter === false || $pkl_latitude < -90 || $pkl_latitude > 90 || $pkl_longitude < -180 || $pkl_longitude > 180) {
+            header("Location:../../index.php?page=siswa&add=lokasi_tidak_valid");
+            exit;
+        }
 
         // ================== Generate kode unik ==================
         $q = mysqli_query($kon, "SELECT max(kode_pengguna) as kodeTerbesar FROM tbl_user");
@@ -108,8 +117,8 @@ if (isset($_POST['tambah_siswa'])) {
         $simpan_pengguna = mysqli_query($kon, $sql_user) or die("Error USER: " . mysqli_error($kon));
 
         // ================== Insert ke tbl_siswa ==================
-        $sql_siswa = "INSERT INTO tbl_siswa (kode_siswa, nama, perusahaan, jurusan, nis, mulai_pkl, akhir_pkl, jam_masuk, alamat, no_telp, foto)
-                  VALUES ('$kode_pengguna','$nama','$perusahaan','$jurusan','$nis','$mulai_pkl','$akhir_pkl','$jam_masuk','$alamat','$no_telp','$foto')";
+        $sql_siswa = "INSERT INTO tbl_siswa (kode_siswa, nama, perusahaan, jurusan, pembimbing, nis, mulai_pkl, akhir_pkl, jam_masuk, pkl_latitude, pkl_longitude, pkl_radius_meter, alamat, no_telp, foto)
+                  VALUES ('$kode_pengguna','$nama','$perusahaan','$jurusan','$pembimbing','$nis','$mulai_pkl','$akhir_pkl','$jam_masuk','$pkl_latitude','$pkl_longitude','$pkl_radius_meter','$alamat','$no_telp','$foto')";
         $simpan_siswa = mysqli_query($kon, $sql_siswa) or die("Error SISWA: " . mysqli_error($kon));
 
         // ================== Commit / Rollback ==================
@@ -144,6 +153,12 @@ if (isset($_POST['tambah_siswa'])) {
             <div class="form-group">
                 <label>Jurusan :</label>
                 <input type="text" name="jurusan" class="form-control" placeholder="Masukan Nama Jurusan" required>
+            </div>
+        </div>
+        <div class="col-sm-6">
+            <div class="form-group">
+                <label>Pembimbing PKL :</label>
+                <input type="text" name="pembimbing" class="form-control" placeholder="Masukkan nama pembimbing PKL" required>
             </div>
         </div>
         <div class="col-sm-6">
@@ -208,6 +223,7 @@ if (isset($_POST['tambah_siswa'])) {
             </div>
         </div>
     </div>
+    <?php include __DIR__ . '/lokasi_pkl_picker.php'; ?>
     <div class="row">
         <div class="col-sm-4">
             <button type="submit" name="tambah_siswa" id="Submit" class="btn btn-success"><i class="fa fa-plus"></i> Daftar</button>

@@ -3,6 +3,11 @@ session_start();
 if (isset($_POST['submit'])) {
     include '../../config/database.php';
 
+    if (empty($_SESSION['id_siswa']) || strtolower($_SESSION['level'] ?? '') !== 'siswa') {
+        http_response_code(403);
+        exit('Akses tidak diizinkan');
+    }
+
     function input($data)
     {
         return htmlspecialchars(stripslashes(trim($data)));
@@ -11,12 +16,11 @@ if (isset($_POST['submit'])) {
     // Ambil data dari session & form
     $id_siswa  = $_SESSION["id_siswa"];
     $status    = input($_POST["status"]);
-    $latitude  = input($_POST["latitude"]);
-    $longitude = input($_POST["longitude"]);
     date_default_timezone_set("Asia/Jakarta");
     $tanggal   = date("Y-m-d");
     $waktu     = date("H:i:s");
     $alasan    = isset($_POST["alasan"]) ? input($_POST["alasan"]) : "";
+    $is_ajax   = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest';
 
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
         mysqli_query($kon, "START TRANSACTION");
@@ -29,12 +33,16 @@ if (isset($_POST['submit'])) {
             LIMIT 1
         ");
         $siswa = mysqli_fetch_assoc($siswa_query);
+        if (!$siswa) {
+            mysqli_query($kon, 'ROLLBACK');
+            $response = ['status' => 'error', 'code' => 'gagal', 'message' => 'Data siswa tidak dapat dimuat.'];
+            if ($is_ajax) { header('Content-Type: application/json'); echo json_encode($response); } else { header('Location:../../index.php?page=absen&mulai=gagal'); }
+            exit;
+        }
         $jam_masuk_siswa = $siswa['jam_masuk'] ?? '08:00:00';
 
         // Upload foto absensi (support normal file upload or blob sent via AJAX)
         $foto_baru = null;
-        $is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest';
-
         // Validasi waktu sebelum file dipindahkan agar percobaan terlambat
         // tidak meninggalkan file foto yang tidak terpakai.
         $cek_waktu = "
@@ -102,7 +110,7 @@ if (isset($_POST['submit'])) {
                 INSERT INTO tbl_absensi 
                     (id_siswa, status, foto, latitude, longitude, waktu, tanggal) 
                 VALUES 
-                    ('$id_siswa', '$status', '$foto_baru', '$latitude', '$longitude', '$waktu', '$tanggal')
+                    ('$id_siswa', '$status', '$foto_baru', NULL, NULL, '$waktu', '$tanggal')
             ";
             $simpan_absensi = mysqli_query($kon, $sql_absen);
         } else {
@@ -235,6 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['submit'])) {
                         <option value="1">Hadir</option>
                         <option value="2">Izin</option>
                         <option value="3">Tidak Hadir</option>
+                        <option value="4">Sakit</option>
                     </select>
                     <span id="status-display" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:#000;">Pilih</span>
                 </div>
@@ -266,10 +275,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['submit'])) {
             <small class="text-muted">Pastikan kamera aktif dan beri izin ketika diminta.</small>
         </div>
     </div>
-
-    <!-- Lokasi -->
-    <input type="hidden" name="latitude" id="latitude">
-    <input type="hidden" name="longitude" id="longitude">
 
     <div class="row">
         <div class="col-sm-4">
@@ -323,15 +328,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['submit'])) {
             $('#tombol_hari').attr('disabled', true);
         }
 
-        // Ambil lokasi otomatis
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                $('#latitude').val(position.coords.latitude);
-                $('#longitude').val(position.coords.longitude);
-            }, function() {
-                alert('Gagal mengambil lokasi. Pastikan GPS aktif.');
-            });
-        }
     });
 
     // Camera capture + AJAX submit
@@ -421,7 +417,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['submit'])) {
                 });
             }).then(function(json) {
                 if (json && json.code === 'terlambat') {
-                    alert('Maaf, Anda telat. Tolong hubungi pihak terkait.');
+                    alert(json.message || 'Absensi ditolak.');
                     $('#modal').modal('hide');
                 } else if (json && json.redirect) {
                     window.location = json.redirect;

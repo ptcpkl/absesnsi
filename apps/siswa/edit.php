@@ -27,12 +27,21 @@ if (isset($_POST['edit_siswa'])) {
         $nama = input($_POST["nama"]);
         $perusahaan = input($_POST["perusahaan"]);
         $jurusan = input($_POST["jurusan"]);
+        $pembimbing = mysqli_real_escape_string($kon, trim($_POST["pembimbing"] ?? ''));
         $nis = input($_POST["nis"]);
         $mulai_pkl = input($_POST["mulai_pkl"]);
         $akhir_pkl = input($_POST["akhir_pkl"]);
         $jam_masuk = input($_POST["jam_masuk"]);
+        $pkl_latitude = filter_var($_POST['pkl_latitude'] ?? null, FILTER_VALIDATE_FLOAT);
+        $pkl_longitude = filter_var($_POST['pkl_longitude'] ?? null, FILTER_VALIDATE_FLOAT);
+        $pkl_radius_meter = filter_var($_POST['pkl_radius_meter'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 25, 'max_range' => 5000]]);
         $no_telp = input($_POST["no_telp"]);
         $alamat = input($_POST["alamat"]);
+
+        if ($pkl_latitude === false || $pkl_longitude === false || $pkl_radius_meter === false || $pkl_latitude < -90 || $pkl_latitude > 90 || $pkl_longitude < -180 || $pkl_longitude > 180) {
+            header("Location:../../index.php?page=siswa&edit=lokasi_tidak_valid");
+            exit;
+        }
 
         // Foto
         $foto_saat_ini = $_POST['foto_saat_ini'];
@@ -79,10 +88,14 @@ if (isset($_POST['edit_siswa'])) {
                         nama='$nama',
                         perusahaan='$perusahaan',
                         jurusan='$jurusan',
+                        pembimbing='$pembimbing',
                         nis='$nis',
                         mulai_pkl='$mulai_pkl',
                         akhir_pkl='$akhir_pkl',
                         jam_masuk='$jam_masuk',
+                        pkl_latitude='$pkl_latitude',
+                        pkl_longitude='$pkl_longitude',
+                        pkl_radius_meter='$pkl_radius_meter',
                         alamat='$alamat',
                         no_telp='$no_telp',
                         foto='$foto_baru_unik'
@@ -98,10 +111,14 @@ if (isset($_POST['edit_siswa'])) {
                     nama='$nama',
                     perusahaan='$perusahaan',
                     jurusan='$jurusan',
+                    pembimbing='$pembimbing',
                     nis='$nis',
                     mulai_pkl='$mulai_pkl',
                     akhir_pkl='$akhir_pkl',
                     jam_masuk='$jam_masuk',
+                    pkl_latitude='$pkl_latitude',
+                    pkl_longitude='$pkl_longitude',
+                    pkl_radius_meter='$pkl_radius_meter',
                     no_telp='$no_telp',
                     alamat='$alamat'
                     WHERE id_siswa=$id_siswa";
@@ -165,6 +182,12 @@ $data = mysqli_fetch_array($hasil);
         </div>
         <div class="col-sm-6">
             <div class="form-group">
+                <label>Pembimbing PKL :</label>
+                <input type="text" name="pembimbing" class="form-control" value="<?php echo htmlspecialchars($data['pembimbing'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Masukkan nama pembimbing PKL" required>
+            </div>
+        </div>
+        <div class="col-sm-6">
+            <div class="form-group">
                 <label>Nomor Induk siswa :</label>
                 <input type="text" name="nis" class="form-control" value="<?php echo $data['nis']; ?>" placeholder="Masukan Nomor Induk siswa" required>
             </div>
@@ -203,6 +226,12 @@ $data = mysqli_fetch_array($hasil);
             </div>
         </div>
     </div>
+    <?php
+    $pkl_latitude = $data['pkl_latitude'] ?? '';
+    $pkl_longitude = $data['pkl_longitude'] ?? '';
+    $pkl_radius_meter = $data['pkl_radius_meter'] ?? 100;
+    include __DIR__ . '/lokasi_pkl_picker.php';
+    ?>
     <div class="row">
         <div class="col-sm-3">
             <label>Foto :</label><br>
